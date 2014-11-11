@@ -1,0 +1,8 @@
+function [aligned_image] = alignImage(imageOne, imageTwo)
+img_adjust = zeros(1,2);
+
+img_adjust = img_displacement(imageOne, imageTwo); % obtainging the minimum displacement for t
+aligned_image = circshift(imageOne,img_adjust);
+
+
+end

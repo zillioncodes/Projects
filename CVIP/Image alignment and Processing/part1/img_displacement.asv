@@ -1,0 +1,15 @@
+function [img_adjust] = img_displacement(imageOne,imageTwo)
+% finds the best adjustment as per the minimum value and returns a value according to which
+% alignment of images is done.
+min = inf;   % sets the value to infinity so that the first value of displacement is saved as the initial minimum value
+
+for i = -15:15
+    for j = -15:15
+        
+
+
+
+
+
+
+end
