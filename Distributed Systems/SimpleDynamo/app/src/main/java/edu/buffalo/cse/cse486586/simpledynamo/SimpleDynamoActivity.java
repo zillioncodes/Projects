@@ -5,11 +5,11 @@ import android.text.method.ScrollingMovementMethod;
 import android.util.Log;
 import android.view.Menu;
 import android.widget.TextView;
-/* Class responsible fro the creation of activity*/
+/* Class responsible for the creation of activity*/
 public class SimpleDynamoActivity extends Activity {
 
 	@Override
-	/* Called as the first instant of creation of the AVD.*/
+	/* Called as the first instance of creation of the AVD.*/
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_simple_dynamo);
