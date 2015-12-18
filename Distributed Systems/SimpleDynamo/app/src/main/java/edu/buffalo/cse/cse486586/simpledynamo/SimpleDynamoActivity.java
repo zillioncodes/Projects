@@ -1,5 +1,4 @@
 package edu.buffalo.cse.cse486586.simpledynamo;
-
 import android.os.Bundle;
 import android.app.Activity;
 import android.text.method.ScrollingMovementMethod;
