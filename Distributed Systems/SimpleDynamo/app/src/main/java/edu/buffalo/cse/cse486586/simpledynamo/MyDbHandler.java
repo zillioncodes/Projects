@@ -1,5 +1,4 @@
 package edu.buffalo.cse.cse486586.simpledynamo;
-
 import android.content.Context;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
