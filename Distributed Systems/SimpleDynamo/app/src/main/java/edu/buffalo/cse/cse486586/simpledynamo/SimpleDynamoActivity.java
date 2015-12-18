@@ -5,7 +5,10 @@ import android.text.method.ScrollingMovementMethod;
 import android.util.Log;
 import android.view.Menu;
 import android.widget.TextView;
-/* Class responsible for the creation of activity*/
+
+/* Class responsible 
+ * for the creation of activity*/
+ 
 public class SimpleDynamoActivity extends Activity {
 
 	@Override
