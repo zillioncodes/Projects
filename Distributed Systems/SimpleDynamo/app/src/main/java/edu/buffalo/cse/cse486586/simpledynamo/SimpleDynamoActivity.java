@@ -6,16 +6,17 @@ import android.text.method.ScrollingMovementMethod;
 import android.util.Log;
 import android.view.Menu;
 import android.widget.TextView;
-
+/* Class responsible fro the creation of activity*/
 public class SimpleDynamoActivity extends Activity {
 
 	@Override
+	/* Called as the first instant of creation of the AVD */
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_simple_dynamo);
     
 		TextView tv = (TextView) findViewById(R.id.textView1);
-        tv.setMovementMethod(new ScrollingMovementMethod());
+        	tv.setMovementMethod(new ScrollingMovementMethod());
 	}
 
 	@Override
