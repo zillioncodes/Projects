@@ -18,7 +18,7 @@ import java.util.Map;
 
 /**
  * Created by zappykid on 4/14/15.
- * This class is which holds data related to all the nodes and there mapping to their respective hashes/
+ * This class is which holds data related to all the nodes and there mapping to their respective hashes.
  * It also has the data related to the membership information and location of the nodes.
  * It uses networking to check if all the other nodes have become active or not. 
  * Also it handles passing of information upon data update after failure.
