@@ -23,7 +23,7 @@ import android.database.sqlite.SQLiteOpenHelper;
         /*Creates the databse tables by running the SQL scripts on creation of the emulator */
         public void onCreate(SQLiteDatabase db) {
             try{
-                db = getWritableDatabase();    // Retrieves the database to write.
+                db = getWritableDatabase();    // Retrieves the database object to write.
                 String CREATE_KEYVALUE_TABLE = "CREATE TABLE " +
                         TABLE_KEYVALUE + " ( "
                         + COLUMN_KEY + " STRING PRIMARY KEY," + COLUMN_VALUE
