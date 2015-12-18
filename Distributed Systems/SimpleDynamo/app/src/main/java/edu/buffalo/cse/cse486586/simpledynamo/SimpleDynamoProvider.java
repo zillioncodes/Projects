@@ -1,5 +1,4 @@
 package edu.buffalo.cse.cse486586.simpledynamo;
-
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -22,7 +21,6 @@ import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.TimeoutException;
-
 import android.content.ContentProvider;
 import android.content.ContentValues;
 import android.content.Context;
@@ -34,57 +32,69 @@ import android.os.AsyncTask;
 import android.telephony.TelephonyManager;
 import android.util.Log;
 
+/** 
+ * This class is the content provider of the system. 
+ * It creates the URIs, database handlers and is the central hub where the 
+ * different query processing occures in the system. 
+ * It uses the helper clas MyDBHandler
+ */
+
+
+
+
 public class SimpleDynamoProvider extends ContentProvider {
-    String myPort; static final int SERVER_PORT = 10000;static nodeHub myNode = null;private Uri mUri;
-    //static boolean lock = true;
+    /* Global varaibles declaration*/
+    public static final int SERVER_PORT = 10000;             // Server port with constant id
+    public static int starAvdCount = 4;                      // Number of AVDs running in the system    
+    private static final String dbname = "mydb";             // Database Name  
+    boolean updateFlag = false; boolean flag = false;
+    int starReply=0;
+    static nodeHub myNode = null;private Uri mUri; public String myPort;
     private MyDbHandler myHandler; private SQLiteDatabase db;private Cursor myQueryCursor;
-    static final String TAG = SimpleDynamoProvider.class.getSimpleName(); public static int starAvdCount = 4;
-    private static final String dbname = "mydb";boolean updateFlag = false;
-    public HashMap<String, String> portHash = new HashMap<String, String>();
-    HashMap<String, String> map = new HashMap<String, String>();
-    private String myQueryResult = null;public boolean flag = false;static Object lock = new Object();
-    int starReply=0;public static String queryReturnPort; long millis;
-    public static HashMap<String,String> kvResult = new HashMap<String,String>();
-    Queue<String> writeQueue = new LinkedList<String>();Queue<String> readQueue = new LinkedList<String>();
-    public static HashMap<String,ArrayList<String>> onIFailStore =  new HashMap<String,ArrayList<String>>();
-    public static HashMap<String,ArrayList<String>> onRFailStore =  new HashMap<String,ArrayList<String>>();
+    static final String TAG = SimpleDynamoProvider.class.getSimpleName(); 
+    public static String queryReturnPort; long millis;
+    private String myQueryResult = null;public static Object lock = new Object();
+    public HashMap<String, String> portHash = new HashMap<String, String>();         //Maps stores the hash-actual port id relation.
+    public HashMap<String, String> map = new HashMap<String, String>();          
+    public static HashMap<String,String> kvResult = new HashMap<String,String>();    // Stores resulatant key values
+    Queue<String> writeQueue = new LinkedList<String>();                             // Stores the write requests    
+    Queue<String> readQueue = new LinkedList<String>();                              // Stores the read requests 
+    public static HashMap<String,ArrayList<String>> onIFailStore =  new HashMap<String,ArrayList<String>>();    // Stores the original content for the failed nodes
+    public static HashMap<String,ArrayList<String>> onRFailStore =  new HashMap<String,ArrayList<String>>();    // Stores the replicated data of the failed nodes 
+    
+    
+    
     @Override
+    /*Initializations and creation of AVDs as the server and client ports
+     * The SysOuts refer to the debug output logs
+     */
     public boolean onCreate() {
         // TODO Auto-generated method stub
-        mUri = buildUri("content", "/edu.buffalo.cse.cse486586.simpledynamo.provider");
-        TelephonyManager tel = (TelephonyManager) this.getContext().getSystemService(Context.TELEPHONY_SERVICE);
+        mUri = buildUri("content", "/edu.buffalo.cse.cse486586.simpledynamo.provider");                               // For Content Provider
+        TelephonyManager tel = (TelephonyManager) this.getContext().getSystemService(Context.TELEPHONY_SERVICE);      // Setting up of the port ids of AVD
         String portStr = tel.getLine1Number().substring(tel.getLine1Number().length() - 4);
         myPort = String.valueOf((Integer.parseInt(portStr) * 2));
-        System.out.println("the port number is the following:" + myPort);
+        //System.out.println("the port number is the following:" + myPort);
+        
+        /*Creates the a server in each AVD node and waits for messages from other AVD nodes */
         try {
             ServerSocket serverSocket = new ServerSocket(SERVER_PORT);
             new ServerTask().executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, serverSocket);
-            System.out.println("serverTask has been called with the server socket set to 10000");
+            //System.out.println("serverTask has been called with the server socket set to 10000");
         } catch (IOException e) {
             Log.e(TAG, "Can't create a ServerSocket");
         }
         millis = System.currentTimeMillis();
-        myNode = new nodeHub(myPort);
+        myNode = new nodeHub(myPort);                                     // Naming of the current AVD with the port number
         try {
-            myNode.initNodes();
-            //myNode.checkAVDNum();
-            //while(myNode.checkFlag){
-              //  System.out.println("Waiting while check!");
-              //  Thread.sleep(2);
-            //}
-            //if(myNode.count==4){
-                myNode.updateInsFail();
-                myNode.updateRepFail();
-
-
-                //Thread.sleep(500);
-                updateFlag = true;
-                while (updateFlag) {
-                    System.out.println("Waiting while update!!");
-                    Thread.sleep(2);
+            myNode.initNodes();                                           // Initializes the nodes                  
+            myNode.updateInsFail();                                       // Updates if the AVD has recovered from failure         
+            myNode.updateRepFail();                                         
+            updateFlag = true;
+                while (updateFlag) {                                      // Waits for the update after failure.
+                    //System.out.println("Waiting while update!!");
+                    Thread.sleep(20);
                 }
-
-            //else{
             myHandler = new MyDbHandler(
                     getContext(),
                     dbname,
@@ -99,35 +109,40 @@ public class SimpleDynamoProvider extends ContentProvider {
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
-        System.out.println("have initiated the nodeHub");
-
+        //System.out.println("have initiated the nodeHub");
         return false;
     }
 
 
     @Override
+    /* Performs the delete operation based on the input.
+    *  Handles two special string "@" and "*" for querying all data from current AVD and 
+    *  querying all the data from all the AVDs.
+    */
     public int delete(Uri uri, String selection, String[] selectionArgs) {
         // TODO Auto-generated method stub
-        String star = "\"*\"";
+        String star = "\"*\"";    
         String atRate = "@";
-        if (selection.equalsIgnoreCase(star)) {
+        if (selection.equalsIgnoreCase(star)) {                                               // This statement checks which kind of delete operation has been requested to perform on the system.
             deleteAll();
             star = star + "#" + myPort;
-            System.out.println("Sending to other ports to delete");
-            new ClientTask().executeOnExecutor(AsyncTask.SERIAL_EXECUTOR, "Del", star);
+            //System.out.println("Sending to other ports to delete");
+            new ClientTask().executeOnExecutor(AsyncTask.SERIAL_EXECUTOR, "Del", star);       // Passes the delete request to the other AVDs.
         } else if (selection.equalsIgnoreCase(atRate)) {
-            System.out.println("delete local values");
+            //System.out.println("delete local values");
             deleteAll();
         } else {
             int in = deleteQuery(selection);
             if (in == 1) {
-                new ClientTask().executeOnExecutor(AsyncTask.SERIAL_EXECUTOR, "Del", selection);
+                new ClientTask().executeOnExecutor(AsyncTask.SERIAL_EXECUTOR, "Del", selection);   
             }
         }
 
         return 0;
     }
-
+    
+    
+    /*This method handles all other delete queries which do not have the special characters */
     private int deleteQuery(String selection) {
         Cursor check = searchQuery(selection);
         String key = null;
@@ -135,11 +150,11 @@ public class SimpleDynamoProvider extends ContentProvider {
         while (check.moveToNext()) {
             key = check.getString(0);
             String value = check.getString(1);
-            ///System.out.println("The value of key in cursor is " + key);
-            ///System.out.println("The value of value in cursor is " + value);
+            //System.out.println("The value of key in cursor is " + key);
+            //System.out.println("The value of value in cursor is " + value);
         }
         if (key != null) {
-            query = "DELETE FROM kvPair where key='" + selection + "'";
+            query = "DELETE FROM kvPair where key='" + selection + "'";           // SQL Query to delete date from the database of AVD
             db = myHandler.getWritableDatabase();
             db.execSQL(query);
             return 0;
@@ -147,6 +162,8 @@ public class SimpleDynamoProvider extends ContentProvider {
             return 1;
         }
     }
+    
+    /* This is method responsible for the deletion of data from the other nodes in the network */
 
     private void deleteSubAll(String selection) {
         ///System.out.println("Inside sub delete");
@@ -168,22 +185,18 @@ public class SimpleDynamoProvider extends ContentProvider {
             }
         }
     }
-
+    /* Method responsible for running the delete query in the AVD */
     private void deleteAll() {
         String query;
-        System.out.println("Trying to delete all values in AVD");
+        //System.out.println("Trying to delete all values in AVD");
         query = "DELETE FROM kvPair";
-        System.out.println("In Query Delete");
+        //System.out.println("In Query Delete");
 
         try {
-//            db = myHandler.getWritableDatabase();
-//            db.rawQuery(query,null);
             db = myHandler.getWritableDatabase();
             db.execSQL(query);
-            //return cursor;
         } catch (Exception e) {
             Log.e(TAG, "database delete failed");
-            // return null;
         }
     }
 
@@ -194,77 +207,75 @@ public class SimpleDynamoProvider extends ContentProvider {
     }
 
     @Override
+    /* Method is called when the insert operation is to be done on the system.
+    *  This is one of the entry method of tester scripts
+    */
+    
     public Uri insert(Uri uri, ContentValues values) {
         // TODO Auto-generated method stub
-        Set<String> keys = values.keySet();
-        String key = null;
+        Set<String> keys = values.keySet();                           // Obtains the value of the KeySet being sent on the system
+        String key = null; String getPortToInsert = "";
         String keytemp = "";
-        //String[] keyVal = new String[4]; //String keyHash;
         StringBuffer sb = new StringBuffer();
         String keyhashval = "";
-        //int flag = 0;
-        Iterator iterator = keys.iterator();
+        Iterator iterator = keys.iterator();                          // Creates the Iterator to iterate on the content values that has been sent     
         int i = 2;
         int j = 0;
+        
         while (iterator.hasNext()) {
-            key = (String) iterator.next();
+            key = (String) iterator.next();                           // Retrieves the key in string format
             if (key.equalsIgnoreCase("key")) {
                 keytemp = (String) values.get(key);
-                sb.append(keytemp); //sb = key
+                sb.append(keytemp); 
             } else if (key.equalsIgnoreCase(("value"))) {
-                sb.append("#").append((String) values.get(key)); // sb = key#value
+                sb.append("#").append((String) values.get(key));     // Creates the value#key format of data, to make it easy to process.  
             }
         }
         try {
-            keyhashval = genHash(keytemp);
-            //sb.append("#").append(keyhashval); //sb = key#value#keyHAshVal
+            keyhashval = genHash(keytemp);                          // Responsible to generate the Hash Value of the keys
         } catch (NoSuchAlgorithmException e) {
             e.printStackTrace();
         }
-        String getPortToInsert = "";
-        System.out.println("Sorted nodes:"+myNode.nodes.size());
+        //System.out.println("Sorted nodes:"+myNode.nodes.size());
         while (j < myNode.nodes.size()) {
             int compr = keyhashval.compareTo(myNode.nodes.get(j));
-            System.out.println("Key:"+keytemp+" Comparing keyhash "+keyhashval+" with node hash:"+myNode.nodes.get(j));
-            System.out.println("Compare value:"+compr);
+            //System.out.println("Key:"+keytemp+" Comparing keyhash "+keyhashval+" with node hash:"+myNode.nodes.get(j));
+            //System.out.println("Compare value:"+compr);
             if (compr <= 0) {
-                getPortToInsert = myNode.nodeHashMap.get(myNode.nodes.get(j));
-
-                //sb.append("#").append(getPortToInsert);
-                //flag++;
+                getPortToInsert = myNode.nodeHashMap.get(myNode.nodes.get(j));      // Finds the node membership to insert the key, value pair
                 break;
             }
             j++;
         }
-        System.out.println("The value of j:"+j);
-        if (j == myNode.nodes.size()) {
-            getPortToInsert = myNode.nodeHashMap.get(myNode.nodes.get(0));
+        //System.out.println("The value of j:"+j); 
+        /* Handles different conditions in which insert operation can happern */
+        if (j == myNode.nodes.size()) {                                 
+            getPortToInsert = myNode.nodeHashMap.get(myNode.nodes.get(0));  
             j=0;
         }
         if (getPortToInsert.equalsIgnoreCase(myPort)) {
-            System.out.println("In myAVD:"+myPort+" with final insert:"+sb.toString());
-            finalInsert(sb.toString());   // new sb = key#value
+            //System.out.println("In myAVD:"+myPort+" with final insert:"+sb.toString());
+            finalInsert(sb.toString());                                                 // FORMAT: new sb = key#value
             new ClientTask().executeOnExecutor(AsyncTask.SERIAL_EXECUTOR, "REPLICATE", sb.toString());
         } else {
-            sb.append("#").append(getPortToInsert);// new sb = key#value#getPortToInsert
-            System.out.println("Port to insert is:"+myNode.nodes.get(j));
+            sb.append("#").append(getPortToInsert);                                      // FORMAT: new sb = key#value#getPortToInsert
+            //System.out.println("Port to insert is:"+myNode.nodes.get(j));
             new ClientTask().executeOnExecutor(AsyncTask.SERIAL_EXECUTOR, "insert", sb.toString());
         }
-        //lookUpPort(keyVal);
         return null;
     }
-
+    
+    /* Responsible for final insert into the database */
     private synchronized void finalInsert(String s) {
-        ContentValues newCV = new ContentValues();
+        ContentValues newCV = new ContentValues();            // Content Value object Creation
         System.out.println(s);
         String[] tmparr = s.split("#");
-        newCV.put("key", tmparr[0]);
-        newCV.put("value", tmparr[1]);
-        System.out.println("The values in CV is Key:"+newCV.get("key")+"and Value is:"+newCV.get("value"));
+        newCV.put("key", tmparr[0]);                              // Content Value object initialization
+        newCV.put("value", tmparr[1]);                            // Content Value object iniialization
+        //System.out.println("The values in CV is Key:"+newCV.get("key")+"and Value is:"+newCV.get("value"));
         try {
-            db = myHandler.getWritableDatabase();
-            //Cursor cursor = db.rawQuery(query, null);
-            db.insert("kvPair", null, newCV);
+            db = myHandler.getWritableDatabase();                 // Get the database 
+            db.insert("kvPair", null, newCV);                     // Calls the in library insert function to put data into DB
             //System.out.println("inserted values to dbase:" + values.get(key) + ":key is" + key);
             Log.i("insert", newCV.toString());
         } catch (Exception e) {
@@ -275,6 +286,9 @@ public class SimpleDynamoProvider extends ContentProvider {
 
 
     @Override
+    /* Method responsible for the query operation being called by the tester script
+    * It is one of the entry operation into the system
+    */
     public Cursor query(Uri uri, String[] projection, String selection,
                         String[] selectionArgs, String sortOrder) {
         // TODO Auto-generated method stub
@@ -284,35 +298,39 @@ public class SimpleDynamoProvider extends ContentProvider {
         String atRate = "\"@\"";
         String getPortToQuery = "";
         String star = "\"*\"";
+        
+        
         try {
             ///System.out.println("The value queried for selection is : " + selection);
-            selectionKeyHash = genHash(selection);
+            selectionKeyHash = genHash(selection);                                      // Generate hash on the keys queried on.
         } catch (NoSuchAlgorithmException e) {
             e.printStackTrace();
         }
-        if (selection.equals(atRate)) {
+        /* The If statement is responsible to verify the type of query coming in and decides where to send depending upon the query */
+        
+        if (selection.equals(atRate)) {                                                    // "@" Query
             Cursor csr = getAllQuery();
             MatrixCursor mc = new MatrixCursor(new String[]{"key", "value"});
             while (csr.moveToNext()) {
                 String key = csr.getString(0);
                 String value = csr.getString(1);
-                System.out.println("The value of key in cursor is " + key);
-                System.out.println("The value of value in cursor is " + value);
+                //System.out.println("The value of key in cursor is " + key);
+                //System.out.println("The value of value in cursor is " + value);
                 mc.addRow((new String[]{key, value}));
             }
-            System.out.println("the matrixcursor atRate:" + mc);
+            //System.out.println("the matrixcursor atRate:" + mc);
             return mc;
-        } else if (selection.equals(star)) {
+        } else if (selection.equals(star)) {                                                // "*" Query
             Cursor csr = getAllQuery();
             MatrixCursor mc = new MatrixCursor(new String[]{"key", "value"});
             while (csr.moveToNext()) {
                 String key = csr.getString(0);
                 String value = csr.getString(1);
-                System.out.println("The value of key in cursor is " + key);
-                System.out.println("The value of value in cursor is " + value);
+                //System.out.println("The value of key in cursor is " + key);
+                //System.out.println("The value of value in cursor is " + value);
                 map.put(key, value);
             }
-            if ((myNode.myPortHash.equalsIgnoreCase(myNode.SucPre.get(0)))) {
+            if ((myNode.myPortHash.equalsIgnoreCase(myNode.SucPre.get(0)))) {                 
                 for (Map.Entry<String, String> etr : map.entrySet()) {
                     mc.addRow(new String[]{etr.getKey(), etr.getValue()});
                 }
@@ -321,15 +339,11 @@ public class SimpleDynamoProvider extends ContentProvider {
             setMyQueryMap(map);
             msgToQuery = star + "#" + myPort;
             new ClientTask().executeOnExecutor(AsyncTask.SERIAL_EXECUTOR, "QLUSTAR", msgToQuery);
-            //synchronized(lock){
                 try {
-                //Thread.sleep(1000);
                 flag=true;
                 while(flag) {
                     Thread.sleep(2);
-                  //  lock.wait();
                 }
-                  //  lock.notify();
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -337,11 +351,11 @@ public class SimpleDynamoProvider extends ContentProvider {
                 mc.addRow(new String[]{etr.getKey(), etr.getValue()});
             }
             return mc;
-        }//}
-        while (j < myNode.nodes.size()) {
+        }
+        while (j < myNode.nodes.size()) {                                               // To look for which node to send the query
             int compr = selectionKeyHash.compareTo(myNode.nodes.get(j));
             if (compr < 0) {
-                getPortToQuery = myNode.nodeHashMap.get(myNode.nodes.get(j));
+                getPortToQuery = myNode.nodeHashMap.get(myNode.nodes.get(j));           
                 break;
             }
             j++;
@@ -350,41 +364,29 @@ public class SimpleDynamoProvider extends ContentProvider {
             getPortToQuery = myNode.nodeHashMap.get(myNode.nodes.get(0));
         }
         if (getPortToQuery.equalsIgnoreCase(myPort)) {
-            //Cursor csr = searchQuery(selection);
-//            while (csr.moveToNext()) {
-//                String key1 = csr.getString(0);
-//                String value1 = csr.getString(1);
-//                System.out.println("The value of key in cursor is " + key1);
-//                System.out.println("The value of value in cursor is " + value1);
-//            }
-            getPortToQuery = myNode.nodeHashMap.get(myNode.SucPre.get(1));
-            msgToQuery = selection + "#" + getPortToQuery + "#"+myPort;
-            System.out.println("Sending message to query:" + msgToQuery);
-            new ClientTask().executeOnExecutor(AsyncTask.SERIAL_EXECUTOR, "READ", msgToQuery);
-            //return csr;
+            getPortToQuery = myNode.nodeHashMap.get(myNode.SucPre.get(1));                   // Retreives the port id of the AVD to which data needs to be send from the map.
+            msgToQuery = selection + "#" + getPortToQuery + "#"+myPort;                      // Creates the message to query in a particular format
+            //System.out.println("Sending message to query:" + msgToQuery);
+            new ClientTask().executeOnExecutor(AsyncTask.SERIAL_EXECUTOR, "READ", msgToQuery);        // Sends it to respective AVD Node.
         } else {
             msgToQuery = selection + "#" + getPortToQuery;
-            System.out.println("Sending message to query:" + msgToQuery);
+            //System.out.println("Sending message to query:" + msgToQuery);
             new ClientTask().executeOnExecutor(AsyncTask.SERIAL_EXECUTOR, "QUERY", msgToQuery);}
             try {
-                //sThread.sleep(1000);
-                //flag=true;
                 while(!(kvResult.containsKey(selection))) {
                   Thread.sleep(2);
-
                 }
             } catch (Exception e) {
                 e.printStackTrace();
             }
-            MatrixCursor mc = new MatrixCursor(new String[]{"key", "value"});
-            System.out.println("In my port"+myPort+" got key "+selection+" result "+ kvResult.get(selection));
+            
+            MatrixCursor mc = new MatrixCursor(new String[]{"key", "value"});    // Populates the cursor with the queries to send back to the tester.
+            //System.out.println("In my port"+myPort+" got key "+selection+" result "+ kvResult.get(selection));
             mc.addRow((new String[]{selection, kvResult.get(selection)}));
             kvResult.remove(selection);
             return mc;
-        //}
-        //return null;
     }
-
+    
     private synchronized Cursor searchQuery(String selection) {
         String query;
         query = "Select * FROM kvPair WHERE key =  \"" + selection + "\"";
