@@ -9,7 +9,7 @@ import android.widget.TextView;
 public class SimpleDynamoActivity extends Activity {
 
 	@Override
-	/* Called as the first instant of creation of the AVD */
+	/* Called as the first instant of creation of the AVD.*/
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_simple_dynamo);
