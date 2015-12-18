@@ -41,8 +41,4 @@ import android.database.sqlite.SQLiteOpenHelper;
         public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
 
         }
-
-        public void addValue(){
-
-        }
  }
