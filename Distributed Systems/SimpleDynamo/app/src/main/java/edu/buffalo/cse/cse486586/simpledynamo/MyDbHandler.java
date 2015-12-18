@@ -29,10 +29,10 @@ import android.database.sqlite.SQLiteOpenHelper;
                         TABLE_KEYVALUE + " ( "
                         + COLUMN_KEY + " STRING PRIMARY KEY," + COLUMN_VALUE
                         + " STRING, UNIQUE(key) ON CONFLICT REPLACE )"; 
-                System.out.println("Before executing the create table sql script");
-                db.execSQL(CREATE_KEYVALUE_TABLE);       // Runs the sql script
+                //System.out.println("Before executing the create table sql script");
+                db.execSQL(CREATE_KEYVALUE_TABLE);       // To run the sql script
             }catch(Exception e){
-                System.out.println("table not created");
+                //System.out.println("table not created"); // Displays exception on error
             }
         }
 
