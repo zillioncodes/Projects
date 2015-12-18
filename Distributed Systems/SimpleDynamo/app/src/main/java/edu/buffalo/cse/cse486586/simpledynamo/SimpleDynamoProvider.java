@@ -386,7 +386,7 @@ public class SimpleDynamoProvider extends ContentProvider {
             kvResult.remove(selection);
             return mc;
     }
-    
+    /* Method responsible for searching the data base to checkif a query is present in the database. */
     private synchronized Cursor searchQuery(String selection) {
         String query;
         query = "Select * FROM kvPair WHERE key =  \"" + selection + "\"";
@@ -411,7 +411,8 @@ public class SimpleDynamoProvider extends ContentProvider {
         // TODO Auto-generated method stub
         return 0;
     }
-
+    
+    /* Generates hash on an input string */
     private String genHash(String input) throws NoSuchAlgorithmException {
         MessageDigest sha1 = MessageDigest.getInstance("SHA-1");
         byte[] sha1Hash = sha1.digest(input.getBytes());
@@ -428,7 +429,8 @@ public class SimpleDynamoProvider extends ContentProvider {
         uriBuilder.scheme(scheme);
         return uriBuilder.build();
     }
-
+    
+    /* Method to return all the data present in the database */
     public Cursor getAllQuery() {
         String query;
         query = "Select * FROM kvPair";
@@ -444,28 +446,38 @@ public class SimpleDynamoProvider extends ContentProvider {
             return null;
         }
     }
-
+    
+    /* This is a setter to provide information if the reply to a query sent to different AVDs have returned */
     public void setMyQueryMap(HashMap<String, String> myQueryMap) {
         this.map = myQueryMap;
     }
-
+    
+    /* Getter of query  results*/
     public String getMyQueryResult() {
         return myQueryResult;
     }
-
+    
+    /* Setters of query results*/
     public void setMyQueryResult(String myQueryResult) {
         this.myQueryResult = myQueryResult;
     }
+    
+    /* Setters to keep track which port the query should be returned to*/
     public void setQueryReturnPort(String qRP) {
         this.queryReturnPort = qRP;
     }
-
+    
+    /* Getters to keep track which port the query should be returned to*/
     public String getQueryReturnPort() {
         return queryReturnPort;
     }
 
 
-
+    /* Creates the Server on every AVD
+     * Accepts input of different formats and 
+     * depending upon the inputs received there are different section of message processing
+     */
+     
     private class ServerTask extends AsyncTask<ServerSocket, String, Void> {
         protected Void doInBackground(ServerSocket... sockets) {
             ServerSocket serverSocket = sockets[0];
@@ -484,70 +496,70 @@ public class SimpleDynamoProvider extends ContentProvider {
                     pw.flush();
                     pw.close();
                     if (msgParts[0].equalsIgnoreCase(("IF"))) {
-                        System.out.println("After fail, insert:" + inSocket + " the string in port:" + myPort);
+                        //System.out.println("After fail, insert:" + inSocket + " the string in port:" + myPort);
                         if (onIFailStore.containsKey(msgParts[4])) {
                             ArrayList<String> temp = onIFailStore.get(msgParts[4]);
                             temp.add(msgParts[1] + "#" + msgParts[2]);
                             onIFailStore.put(msgParts[4], temp);
-                            System.out.println("The content of IFailStore:" + onIFailStore + " inserted on port:" + msgParts[4]);
+                            //System.out.println("The content of IFailStore:" + onIFailStore + " inserted on port:" + msgParts[4]);
                         } else {
                             ArrayList<String> temp = new ArrayList<String>();
                             temp.add(msgParts[1] + "#" + msgParts[2]);
                             onIFailStore.put(msgParts[4], temp);
-                            System.out.println("The content of IFailStore:" + onIFailStore + " inserted on port:" + msgParts[4]);
+                            //System.out.println("The content of IFailStore:" + onIFailStore + " inserted on port:" + msgParts[4]);
                         }
                         String insert = msgParts[1] + "#" + msgParts[2];
-                        System.out.println("After fail,final insert msg in port:" + msgParts[4] + " message" + insert);
+                        //System.out.println("After fail,final insert msg in port:" + msgParts[4] + " message" + insert);
                         writeQueue.add(insert);
                         gatePass();
                         new ClientTask().executeOnExecutor(AsyncTask.SERIAL_EXECUTOR, "RONE", insert);
                     } else if (msgParts[0].equalsIgnoreCase("UPDTINS")) {
-                        System.out.println("Got insert update request from port:" + msgParts[1] + " map:" + onIFailStore);
+                        //System.out.println("Got insert update request from port:" + msgParts[1] + " map:" + onIFailStore);
                         if (onIFailStore.containsKey(msgParts[1])) {
                             ArrayList<String> temp = onIFailStore.get(msgParts[1]);
-                            System.out.println("To Update data:" + onIFailStore.get(msgParts[1]));
+                            //System.out.println("To Update data:" + onIFailStore.get(msgParts[1]));
                             for (String s : onIFailStore.get(msgParts[1])) {
                                 String[] tmparr = s.split("#");
                                 String keyHashVal = genHash(tmparr[0]);
                                 String msgToSend = tmparr[0] + "#" + tmparr[1] + "#" + msgParts[1];
-                                System.out.println("On update,Message sent to insert:" + msgToSend);
+                                //System.out.println("On update,Message sent to insert:" + msgToSend);
                                 new ClientTask().executeOnExecutor(AsyncTask.SERIAL_EXECUTOR, "insert", msgToSend);
                             }
                             onIFailStore.remove(msgParts[1]);
                             new ClientTask().executeOnExecutor(AsyncTask.SERIAL_EXECUTOR, "UC", msgParts[1]);
                         } else {
-                            System.out.println("*********Nothing to Update******");
+                            //System.out.println("*********Nothing to Update******");
                             //new ClientTask().executeOnExecutor(AsyncTask.SERIAL_EXECUTOR, "UC", msgParts[1]);
                         }
                     } else if (msgParts[0].equalsIgnoreCase("UC")) {
-                        System.out.println("Recieved Update Completion");
+                        //System.out.println("Recieved Update Completion");
                         updateFlag = false;
                     } else if (msgParts[0].equalsIgnoreCase("UPDTREP")) {
-                        System.out.println("Got replicate update request from port:" + msgParts[1] + " map:" + onRFailStore);
+                        //System.out.println("Got replicate update request from port:" + msgParts[1] + " map:" + onRFailStore);
                         getOnRFSValues(msgParts[1]);
                     }else if(msgParts[0].equalsIgnoreCase(("UPDTREPONE"))){
-                        System.out.println("Got replicate from master update request from port:" + msgParts[1] + " map:" + onRFailStore);
+                        //System.out.println("Got replicate from master update request from port:" + msgParts[1] + " map:" + onRFailStore);
                         if((onRFailStore.containsKey(msgParts[1]))) {
                             getOnRFSValues(msgParts[1]);
                         }else{
-                            System.out.println("*********Nothing to Update******");
+                            //System.out.println("*********Nothing to Update******");
                         }
                         new ClientTask().executeOnExecutor(AsyncTask.SERIAL_EXECUTOR, "UC", msgParts[1]);
                     }else if(msgParts[0].equalsIgnoreCase("RF")){
-                        System.out.println("After fail, replica:" + inSocket + " the string in port:" + myPort);
+                        //System.out.println("After fail, replica:" + inSocket + " the string in port:" + myPort);
                         if(onRFailStore.containsKey(msgParts[3])){
                             ArrayList<String> temp = onRFailStore.get(msgParts[3]);
                             //onRFailStore.get(msgParts[3]).add(msgParts[1]+"#"+msgParts[2]);
                             temp.add(msgParts[1]+"#"+msgParts[2]); System.out.println("Just added to the rfailmap:"+msgParts[1]+"#"+msgParts[2]);
-                            System.out.println("fail replica before entering the map:"+onRFailStore);
+                            //System.out.println("fail replica before entering the map:"+onRFailStore);
                             onRFailStore.put(msgParts[3],temp);
-                            System.out.println("fail replica after entering the map:"+onRFailStore);
+                            //System.out.println("fail replica after entering the map:"+onRFailStore);
                         }else {
                             ArrayList<String> temp = new ArrayList<String>();
                             temp.add(msgParts[1]+"#"+msgParts[2]);
-                            System.out.println("fail replica before entering the map:"+onRFailStore);
+                            //System.out.println("fail replica before entering the map:"+onRFailStore);
                             onRFailStore.put(msgParts[3],temp);
-                            System.out.println("fail replica after entering the map:"+onRFailStore);
+                            //System.out.println("fail replica after entering the map:"+onRFailStore);
                         }
                     }
                     else {
@@ -564,7 +576,7 @@ public class SimpleDynamoProvider extends ContentProvider {
                 }
             }
         }
-
+        /* Stores data for the failed node in replicated store */
         private void getOnRFSValues(String msgPart) {
             System.out.println("Value of msg part:"+msgPart);
             if(onRFailStore.containsKey(msgPart)) {
@@ -572,7 +584,6 @@ public class SimpleDynamoProvider extends ContentProvider {
                 System.out.println("To Update data:" + temp);
                 for (String s : temp) {
                     String[] tmparr = s.split("#");
-                    //String keyHashVal = genHash(tmparr[0]);
                     String msgToSend = tmparr[0] + "#" + tmparr[1]+"#"+msgPart;
                     System.out.println("On update,Message sent to replicate:" + msgToSend);
                     new ClientTask().executeOnExecutor(AsyncTask.SERIAL_EXECUTOR, "RU", msgToSend);
@@ -581,20 +592,14 @@ public class SimpleDynamoProvider extends ContentProvider {
             }
         }
 
-//        private synchronized void IFgatePass() {
-//            System.out.println("Inside gatePass");
-//            while (!(writeQueue.isEmpty())) {
-//                System.out.println("Emptying write queue");
-//                String msgPart = writeQueue.remove();
-//                finalInsert(msgPart);
-//                new ClientTask().executeOnExecutor(AsyncTask.SERIAL_EXECUTOR, "REPLICATE", msgPart);
-//            }
-//        }
-
+        /* This method is responsible for providing a pass to different read/write requests accessing the database 
+         * It is a way to synchronize the databse access. 
+         * Empties the write queue first then the read queue.
+         */
         private synchronized void gatePass() {
-            System.out.println("Inside gatePass");
+            //System.out.println("Inside gatePass");
             while (!(writeQueue.isEmpty())) {
-                System.out.println("Emptying write queue");
+                //System.out.println("Emptying write queue");
                 String msgPart = writeQueue.remove();
                 finalInsert(msgPart);
                 //new ClientTask().executeOnExecutor(AsyncTask.SERIAL_EXECUTOR, "REPLICATE", msgPart);
@@ -698,15 +703,19 @@ public class SimpleDynamoProvider extends ContentProvider {
         }
 
     }
-
+    
+    /* The client task is the components which sends the requests from each AVDs to other AVDs. 
+     * There are different types of request and message formats been used.
+     * For every message format, the message header decides how to process the message.
+     */
     private class ClientTask extends AsyncTask<String, Void, Void> {
 
         protected Void doInBackground(String... msgs) {
             String op = msgs[0];
-            System.out.println("Going to perform this operation:" + op);
+            //System.out.println("Going to perform this operation:" + op);
             try {
                 if (op.equalsIgnoreCase("insert")) {
-                    System.out.println("In insert with String:" + msgs[1]);
+                    //System.out.println("In insert with String:" + msgs[1]);
                     String[] inarr = msgs[1].split("#"); //key#value#getPortToInsert
                     Socket socket = new Socket(InetAddress.getByAddress(new byte[]{10, 0, 2, 2}), Integer.parseInt(inarr[2]));
                     //socket.setSoTimeout(50);
@@ -716,12 +725,12 @@ public class SimpleDynamoProvider extends ContentProvider {
                     pw.println(msgToSend);
                     pw.flush();
                     String inSocket = in.readLine();
-                    System.out.println("Sending msg to Write:" + msgToSend);
-                    System.out.println("##################################################Recieved ping:"+inSocket);
+                    //System.out.println("Sending msg to Write:" + msgToSend);
+                    //System.out.println("##################################################Recieved ping:"+inSocket);
                     if(inSocket==null) {
                         String msgToSendOnFail = "IF#"+inarr[0]+"#"+inarr[1];
                         //IF#key#value
-                        System.out.println("Msg Send to insert on fail");
+                        //System.out.println("Msg Send to insert on fail");
                         myNode.handleInsert(msgToSendOnFail, inarr[2]);
                     }
                     socket.close();
@@ -736,8 +745,8 @@ public class SimpleDynamoProvider extends ContentProvider {
                             pw.flush();
                             String inSocket = in.readLine();
                             socket.close();
-                            System.out.println("Sending msg to Write:" + msgToSend);
-                            System.out.println("##################################################Recieved ping:"+inSocket);
+                            //System.out.println("Sending msg to Write:" + msgToSend);
+                            //System.out.println("##################################################Recieved ping:"+inSocket);
                             if(inSocket==null){
                                 starAvdCount--;
                             }
@@ -745,7 +754,7 @@ public class SimpleDynamoProvider extends ContentProvider {
                     }
                 } else if (op.equalsIgnoreCase("QUERY")) {
                     String[] inarr = msgs[1].split("#");
-                    System.out.println("In Case Query:" + msgs[1]);
+                    //System.out.println("In Case Query:" + msgs[1]);
                     Socket socket = new Socket(InetAddress.getByAddress(new byte[]{10, 0, 2, 2}), Integer.parseInt(inarr[1]));
                     PrintWriter pw = new PrintWriter(new OutputStreamWriter(socket.getOutputStream()));
                     BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
@@ -754,8 +763,8 @@ public class SimpleDynamoProvider extends ContentProvider {
                     pw.flush();
                     String inSocket = in.readLine();
                     //socket.close();
-                    System.out.println("Sending msg to Write:" + msgToSend);
-                    System.out.println("##################################################Recieved ping:"+inSocket);
+                    //System.out.println("Sending msg to Write:" + msgToSend);
+                    //System.out.println("##################################################Recieved ping:"+inSocket);
                     if(inSocket==null) {
                         String msgToQueryOnFail = inarr[0]+"#"+myPort;
                         //IF#key#value#keyHash
@@ -766,7 +775,7 @@ public class SimpleDynamoProvider extends ContentProvider {
 
                 } else if (op.equalsIgnoreCase("RQ")) {
                     String[] inarr = msgs[1].split("#");
-                    System.out.println("Result of Query:" + msgs[1]);
+                    //System.out.println("Result of Query:" + msgs[1]);
                     Socket socket = new Socket(InetAddress.getByAddress(new byte[]{10, 0, 2, 2}), Integer.parseInt(inarr[1]));
                     PrintWriter pw = new PrintWriter(new OutputStreamWriter(socket.getOutputStream()));
                     BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
@@ -774,13 +783,13 @@ public class SimpleDynamoProvider extends ContentProvider {
                     pw.println(msgToSend);
                     pw.flush();
                     String inSocket = in.readLine();
-                    System.out.println("Result of Query msg to Write:" + msgToSend);
-                    System.out.println("##################################################Recieved ping:"+inSocket);
+                    //System.out.println("Result of Query msg to Write:" + msgToSend);
+                    //System.out.println("##################################################Recieved ping:"+inSocket);
                     socket.close();
 
                 }else if (op.equalsIgnoreCase("RESSTAR")) {
                     String[] inarr = msgs[1].split("#");
-                    System.out.println("In Case RESSTAR:" + msgs[1]);
+                    //System.out.println("In Case RESSTAR:" + msgs[1]);
                     Socket socket = new Socket(InetAddress.getByAddress(new byte[]{10, 0, 2, 2}), Integer.parseInt(inarr[1]));
                     PrintWriter pw = new PrintWriter(new OutputStreamWriter(socket.getOutputStream()));
                     BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
@@ -789,8 +798,8 @@ public class SimpleDynamoProvider extends ContentProvider {
                     pw.flush();
                     String inSocket = in.readLine();
                     //socket.close();
-                    System.out.println("Sending msg to Write:" + msgToSend);
-                    System.out.println("##################################################Recieved ping:"+inSocket);
+                    //System.out.println("Sending msg to Write:" + msgToSend);
+                    //System.out.println("##################################################Recieved ping:"+inSocket);
                     socket.close();
                 } else if (op.equalsIgnoreCase("del")) {
                     String msgToSend = "del#" + msgs[1]+"#"+myPort;
@@ -802,14 +811,14 @@ public class SimpleDynamoProvider extends ContentProvider {
                     pw.flush();
                     String inSocket = in.readLine();
                     socket.close();
-                    System.out.println("Sending msg to delete:" + msgToSend);
-                    System.out.println("##################################################Recieved ping:"+inSocket);
+                    //System.out.println("Sending msg to delete:" + msgToSend);
+                    //System.out.println("##################################################Recieved ping:"+inSocket);
 
                 } else if(op.equalsIgnoreCase("REPLICATE")){
-                    System.out.println("Sending Value to replicate:"+msgs[1]); int repnodes=0;
+                    //System.out.println("Sending Value to replicate:"+msgs[1]); int repnodes=0;
                     while(repnodes<2){
                         String msgToSend = "REPLICATE#"+msgs[1]; // replicate#key#value
-                        System.out.println(msgToSend+" in port"+myNode.nodeHashMap.get(myNode.SucPre.get(repnodes)));
+                        //System.out.println(msgToSend+" in port"+myNode.nodeHashMap.get(myNode.SucPre.get(repnodes)));
                         Socket socket = new Socket(InetAddress.getByAddress(new byte[]{10, 0, 2, 2}), Integer.parseInt(myNode.nodeHashMap.get(myNode.SucPre.get(repnodes))));
                         PrintWriter pw = new PrintWriter(new OutputStreamWriter(socket.getOutputStream()));
                         BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
@@ -818,30 +827,30 @@ public class SimpleDynamoProvider extends ContentProvider {
                         repnodes++;
                         String inSocket = in.readLine();
                         //socket.close();
-                        System.out.println("Wrote msg to replicate:" + msgToSend);
-                        System.out.println("##################################################Recieved ping:"+inSocket);
+                        //System.out.println("Wrote msg to replicate:" + msgToSend);
+                        //System.out.println("##################################################Recieved ping:"+inSocket);
                         if(inSocket==null && repnodes==1){
                             myNode.handleRepFail(msgs[1],myNode.SucPre.get(repnodes-1));
                         }else if(inSocket==null && repnodes==2){
                             if(onRFailStore.containsKey(myNode.nodeHashMap.get(myNode.SucPre.get(repnodes-1)))){
                                 //ArrayList<String> temp = onRFailStore.get(myNode.nodeHashMap.get(myNode.SucPre.get(repnodes-1)));
-                                System.out.println("Before putting into onRFailStore:"+onRFailStore);
+                                //System.out.println("Before putting into onRFailStore:"+onRFailStore);
                                 onRFailStore.get(myNode.nodeHashMap.get(myNode.SucPre.get(repnodes-1))).add(msgs[1]);
-                                System.out.println("After putting into onRFailStore:"+onRFailStore);
-                                //onRFailStore.put(myNode.nodeHashMap.get(myNode.SucPre.get(repnodes-1)),temp);
+                                //System.out.println("After putting into onRFailStore:"+onRFailStore);
+                                
                             }else {
                                 ArrayList<String> temp = new ArrayList<String>();
                                 temp.add(msgs[1]);
-                                System.out.println("Before putting into onRFailStore:"+onRFailStore);
+                                //System.out.println("Before putting into onRFailStore:"+onRFailStore);
                                 onRFailStore.put(myNode.nodeHashMap.get(myNode.SucPre.get(repnodes-1)),temp);
-                                System.out.println("After putting into onRFailStore:"+onRFailStore);
+                                //System.out.println("After putting into onRFailStore:"+onRFailStore);
                             }
                         }
                         socket.close();
                     }
                 }else if (op.equalsIgnoreCase("READ")) {
                     String[] inarr = msgs[1].split("#"); // key#toreadport#fromqueriedport
-                    System.out.println("In Case Read:" + msgs[1]);
+                    //System.out.println("In Case Read:" + msgs[1]);
                     Socket socket = new Socket(InetAddress.getByAddress(new byte[]{10, 0, 2, 2}), Integer.parseInt(inarr[1]));
                     PrintWriter pw = new PrintWriter(new OutputStreamWriter(socket.getOutputStream()));
                     BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
@@ -849,12 +858,8 @@ public class SimpleDynamoProvider extends ContentProvider {
                     pw.println(msgToSend);
                     pw.flush();
                     String inSocket = in.readLine();
-                    //socket.close();
-                    System.out.println("Sending msg to Write:" + msgToSend);
-                    System.out.println("##################################################Recieved ping:"+inSocket);
                     if(inSocket==null){
                             myNode.handleReadFail(inarr[0],inarr[1],inarr[2]);
-                            System.out.println("To read from the back up port next to:"+inarr[1]);
                     }
                     socket.close();
                 }else if(op.equalsIgnoreCase("UC")){
@@ -864,12 +869,12 @@ public class SimpleDynamoProvider extends ContentProvider {
                     String msgToSend = "UC#"+msgs[1];// + "#" + myPort;
                     pw.println(msgToSend);
                     pw.flush();
-                    System.out.println("Completed Writing updates");
+                    //System.out.println("Completed Writing updates");
                     socket.close();
                 }else if(op.equalsIgnoreCase("RU")){
                     String[] inarr = msgs[1].split("#");
                     String msgToSend = "REPLICATE#"+inarr[0]+"#"+inarr[1];
-                    System.out.println(msgToSend+" in port:"+inarr[2]);
+                    //System.out.println(msgToSend+" in port:"+inarr[2]);
                     Socket socket = new Socket(InetAddress.getByAddress(new byte[]{10, 0, 2, 2}), Integer.parseInt(inarr[2]));
                     PrintWriter pw = new PrintWriter(new OutputStreamWriter(socket.getOutputStream()));
                     BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
@@ -878,28 +883,22 @@ public class SimpleDynamoProvider extends ContentProvider {
                 } else if(op.equalsIgnoreCase("RONE")){
                     System.out.println("In RONE:"+msgs[1]);
                     String msgToSend = "REPLICATE#"+msgs[1]; // replicate#key#value
-                    System.out.println(msgToSend+" in port"+myNode.nodeHashMap.get(myNode.SucPre.get(0)));
+                    //System.out.println(msgToSend+" in port"+myNode.nodeHashMap.get(myNode.SucPre.get(0)));
                     Socket socket = new Socket(InetAddress.getByAddress(new byte[]{10, 0, 2, 2}), Integer.parseInt(myNode.nodeHashMap.get(myNode.SucPre.get(0))));
                     PrintWriter pw = new PrintWriter(new OutputStreamWriter(socket.getOutputStream()));
                     BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
                     pw.println(msgToSend);
                     pw.flush();
-                    //repnodes++;
                     String inSocket = in.readLine();
-                    //socket.close();
-                    System.out.println("Wrote msg to replicate one:" + msgToSend);
-                    System.out.println("##################################################Recieved ping:"+inSocket);
                 }
 
             }catch (ConnectException e) {
                 // TODO Auto-generated catch block
                 e.printStackTrace();
             }catch (SocketTimeoutException e){
-                System.out.println("This is a timeout exception!");
                 e.printStackTrace();
             }
             catch (Exception e) {
-                System.out.println("Exception occured");
                 e.printStackTrace();
             }
             return null;
