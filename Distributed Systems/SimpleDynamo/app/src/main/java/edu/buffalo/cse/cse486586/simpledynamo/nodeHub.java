@@ -214,9 +214,6 @@ public class nodeHub {
                         pw.println(msgToSend);
                         pw.flush();
                         inSocket = in.readLine();
-                        //socket.close();
-                        //System.out.println("update msg to Write:" + msgToSend);
-                        //System.out.println("##################################################Recieved ping:" + inSocket);
                     }while(inSocket==null);
                 }else if(op.equalsIgnoreCase("UPDTREP")){
                     do {
@@ -251,9 +248,6 @@ public class nodeHub {
                         pw.println(msgToSend);
                         pw.flush();
                         inSocket = in.readLine();
-                        //socket.close();
-                        //System.out.println("update msg replicate one fail to Write:" + msgToSend);
-                        //System.out.println("##################################################Recieved ping:" + inSocket);
                     }while(inSocket==null);
                 }else if(op.equalsIgnoreCase("READFAIL")){
                     //System.out.println("Sending new read query key:"+msgs[1]+" to port:"+msgs[3]);
