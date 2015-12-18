@@ -14,7 +14,7 @@ import android.database.sqlite.SQLiteOpenHelper;
         private static final String TABLE_KEYVALUE = "kvPair";
         public static final String COLUMN_KEY = "key";
         public static final String COLUMN_VALUE = "value";
-        SQLiteDatabase db;
+        public SQLiteDatabase db;
 
         public MyDbHandler(Context context, String name, SQLiteDatabase.CursorFactory factory, int version) {
             super(context, name, factory, version);
