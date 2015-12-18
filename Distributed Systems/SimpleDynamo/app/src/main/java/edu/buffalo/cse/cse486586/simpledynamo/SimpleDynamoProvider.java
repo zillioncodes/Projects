@@ -56,7 +56,7 @@ public class SimpleDynamoProvider extends ContentProvider {
     private String myQueryResult = null;public static Object lock = new Object();
     public HashMap<String, String> portHash = new HashMap<String, String>();         //Maps stores the hash-actual port id relation.
     public HashMap<String, String> map = new HashMap<String, String>();          
-    public static HashMap<String,String> kvResult = new HashMap<String,String>();    // Stores resulatant key values
+    public static HashMap<String,String> kvResult = new HashMap<String,String>();    // Stores resulatant key values.
     Queue<String> writeQueue = new LinkedList<String>();                             // Stores the write requests    
     Queue<String> readQueue = new LinkedList<String>();                              // Stores the read requests 
     public static HashMap<String,ArrayList<String>> onIFailStore =  new HashMap<String,ArrayList<String>>();    // Stores the original content for the failed nodes
