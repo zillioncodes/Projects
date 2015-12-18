@@ -602,7 +602,6 @@ public class SimpleDynamoProvider extends ContentProvider {
                 //System.out.println("Emptying write queue");
                 String msgPart = writeQueue.remove();
                 finalInsert(msgPart);
-                //new ClientTask().executeOnExecutor(AsyncTask.SERIAL_EXECUTOR, "REPLICATE", msgPart);
             }
             while (!(readQueue.isEmpty())) {
                 String msgPart = readQueue.remove();
@@ -611,10 +610,6 @@ public class SimpleDynamoProvider extends ContentProvider {
                 while (csr.moveToNext()) {
                     key = csr.getString(0);
                     value = csr.getString(1);
-                    System.out.println("The value of key in cursor is " + key);
-                    System.out.println("The value of value in cursor is " + value);
-                    //resOfQuery = resOfQuery+key+"@"+value+"$";
-                    //mc.addRow((new String[] {key,value}));
                 }
                 value = value + "#" + getQueryReturnPort() + "#" + msgPart;
                 System.out.println("The value of query result:" + value);
@@ -637,7 +632,6 @@ public class SimpleDynamoProvider extends ContentProvider {
                 writeQueue.add(insert);
                 gatePass();
                 new ClientTask().executeOnExecutor(AsyncTask.SERIAL_EXECUTOR, "REPLICATE", insert);
-                //changes
             }else if (msgParts[0].equalsIgnoreCase("QLUSTAR")) {
                 System.out.println("Inside QLUSTAR:" + inSocket);
                 String resOfQuery = "";
@@ -671,8 +665,6 @@ public class SimpleDynamoProvider extends ContentProvider {
                 setQueryReturnPort(msgParts[2]);
                 readQueue.add(msgParts[1]);
                 gatePass();
-                //changed
-                //setMyQueryResult(value);
             }else if(msgParts[0].equalsIgnoreCase("del")){
                 ///System.out.println("Delete comes here"+inSocket);
                 String[] parts = inSocket.trim().split("#");
@@ -680,22 +672,16 @@ public class SimpleDynamoProvider extends ContentProvider {
                 deleteSubAll(parts[1] + "#" + parts[2]);
             }else if(msgParts[0].equalsIgnoreCase("REPLICATE")){
                 String insert = msgParts[1] +"#"+ msgParts[2];
-                System.out.println("Recieved String to insert as replica"+insert);
                 finalInsert(insert);
             }else if(msgParts[0].equalsIgnoreCase("RQ")){
-                System.out.println("Setting value of myQueryResult"+msgParts[1]);
                 kvResult.put(msgParts[2], msgParts[1]);
-                System.out.println("Have just put "+msgParts[2]+" and value:"+msgParts[1]+"  a query result");
-                //flag = false;
             }else if(msgParts[0].equalsIgnoreCase("QUERY")){
-                System.out.println("Inside New Query"+inSocket);//Query#key#portToQuery#fromqueriedport
+                //System.out.println("Inside New Query"+inSocket);//Query#key#portToQuery#fromqueriedport
                 String msgToRead = msgParts[1]+"#"+myNode.nodeHashMap.get(myNode.SucPre.get(1))+"#"+msgParts[3];
-                System.out.println("Sending message to third node"+msgToRead);
                 new ClientTask().executeOnExecutor(AsyncTask.SERIAL_EXECUTOR, "READ",msgToRead);
             }else if(msgParts[0].equalsIgnoreCase("QONE")){
-                System.out.println("Inside Qone"+inSocket);//Query#key#toQueryPort#fromQueryPort
+                //FORMAT: Query#key#toQueryPort#fromQueryPort
                 String msgToRead = msgParts[1]+"#"+myNode.nodeHashMap.get(myNode.SucPre.get(0))+"#"+msgParts[3];
-                System.out.println("Sending read msg to next node"+msgToRead);
                 new ClientTask().executeOnExecutor(AsyncTask.SERIAL_EXECUTOR, "READ",msgToRead);
             }
 
@@ -726,7 +712,6 @@ public class SimpleDynamoProvider extends ContentProvider {
                     pw.flush();
                     String inSocket = in.readLine();
                     //System.out.println("Sending msg to Write:" + msgToSend);
-                    //System.out.println("##################################################Recieved ping:"+inSocket);
                     if(inSocket==null) {
                         String msgToSendOnFail = "IF#"+inarr[0]+"#"+inarr[1];
                         //IF#key#value
